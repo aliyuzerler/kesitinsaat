@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KESİT® — Mimarlık & İnşaat</title>
+
+<!-- Tipografi: Archivo (variable, genişlik ekseni) + IBM Plex Mono -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: "#191713",      // sıcak antrasit
+          coal: "#201E19",
+          paper: "#F1EEE7",    // kırık beyaz
+          bone: "#E7E2D8",     // ara yüzey
+          stone: "#8E897E",    // beton grisi
+          clay: "#C25E3A",     // toprak accent (sınırlı kullanım)
+          line: "rgba(25,23,19,.14)",
+        },
+        fontFamily: {
+          sans: ["Archivo", "sans-serif"],
+          mono: ["'IBM Plex Mono'", "monospace"],
+        },
+      },
+    },
+  };
+</script>
+
+<!-- React + Framer Motion + Lenis + Lucide (import map ile tek React instance) -->
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "react-dom": "https://esm.sh/react-dom@18.3.1?external=react",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+    "framer-motion": "https://esm.sh/framer-motion@11.11.17?external=react,react-dom",
+    "lucide-react": "https://esm.sh/lucide-react@0.462.0?external=react",
+    "lenis": "https://esm.sh/lenis@1.1.14"
+  }
+}
+</script>
+
+<style>
+  :root { --paper:#F1EEE7; --ink:#191713; --clay:#C25E3A; }
+  html { scroll-behavior: smooth; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  body { background: var(--paper); color: var(--ink); overflow-x: hidden; }
+  ::selection { background: var(--clay); color: var(--paper); }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #E7E2D8; }
+  ::-webkit-scrollbar-thumb { background: #191713; }
+
+  /* Genişletilmiş tipografi (wdth ekseni) */
+  .font-x { font-stretch: 122%; }
+
+  /* Film grain dokusu */
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 1000; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  }
+
+  /* Nav altçizgi animasyonu */
+  .navlink { position: relative; }
+  .navlink::after {
+    content: ""; position: absolute; left: 0; bottom: -5px; height: 1px; width: 100%;
+    background: currentColor; transform: scaleX(0); transform-origin: right;
+    transition: transform .5s cubic-bezier(.16,1,.3,1);
+  }
+  .navlink:hover::after { transform: scaleX(1); transform-origin: left; }
+
+  /* Butonlar */
+  .btn { display:inline-flex; align-items:center; gap:.65rem; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.22em; text-transform:uppercase; padding:1.05rem 1.7rem; border:1px solid transparent;
+    transition: background .4s cubic-bezier(.16,1,.3,1), color .4s, border-color .4s; white-space:nowrap; }
+  .btn-solid { background: var(--ink); color: var(--paper); }
+  .btn-solid:hover { background: var(--clay); color: var(--ink); }
+  .btn-ghost { border-color: rgba(25,23,19,.35); color: var(--ink); }
+  .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+  .btn-ghost-light { border-color: rgba(241,238,231,.35); color: var(--paper); }
+  .btn-ghost-light:hover { background: var(--paper); color: var(--ink); }
+
+  input, textarea, select { outline: none; }
+
+  /* Özel imleç yalnızca masaüstü */
+  @media (pointer:fine) and (min-width:1024px) {
+    body.has-cursor, body.has-cursor * { cursor: none !important; }
+  }
+</style>
+
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<script>
+  // TSX'i tarayıcıda derlemek için preset kaydı (react + typescript)
+  Babel.registerPreset("tsx", {
+    presets: [
+      [Babel.availablePresets["react"], { runtime: "classic" }],
+      [Babel.availablePresets["typescript"], { isTSX: true, allExtensions: true }],
+    ],
+  });
+</script>
+</head>
+
+<body class="antialiased">
+<div id="root"></div>
+
+<script type="text/babel" data-type="module" data-presets="tsx">
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue, useInView, animate } from "framer-motion";
+import Lenis from "lenis";
+import {
+  ArrowRight, ArrowUpRight, ArrowDown, Phone, Menu, X, MapPin, Mail, Clock,
+  MessageCircle, Send, Check, Plus, Minus, ChevronDown, Asterisk, ChevronLeft,
+} from "lucide-react";
+
+/* ============================================================
+   TİPLER & VERİ
+============================================================ */
+type Category = "Konut" | "Ticari" | "Kültür";
+
+interface Project {
+  id: number; title: string; cat: Category; year: number;
+  loc: string; area: string; client: string; status: string;
+  seed: string; aspect: string; desc: string; mat: string[];
+}
+
+interface Service { title: string; desc: string; items: string[] }
+
+const easeExpo: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const img = (seed: string, w: number, h: number) =>
+  `https://picsum.photos/seed/${seed}/${w}/${h}.jpg`;
+
+const PROJECTS: Project[] = [
+  { id: 1, title: "Limankule Rezidans", cat: "Konut", year: 2024, loc: "Sarıyer, İstanbul", area: "42.000 m²", client: "Mera Gayrimenkul", status: "Teslim edildi", seed: "kesit-limankule", aspect: "4/5",
+    desc: "Boğaz'un kuzeyinde, %18 eğimli bir arazide üç blok ve 96 daireden oluşan rezidans kompleksi. Kot farkı, teraslı kurgu ve basamaklı bahçelerle avantaja çevrildi; cephenin brüt beton iskeleti termo ahşap brise-soleil ile yumuşatıldı.",
+    mat: ["Doğal taş kaplama", "Brüt beton", "Termo ahşap", "Bronz doğrama"] },
+  { id: 2, title: "Meridyen Ofis Kampüsü", cat: "Ticari", year: 2023, loc: "Maslak, İstanbul", area: "68.500 m²", client: "ETA Holding", status: "Teslim edildi", seed: "kesit-meridyen", aspect: "4/3",
+    desc: "Maslak'ta üç bloklu ofis kampüsü. Avlulara açılan kat planları, çift cepheli doğal havalandırma ve işletme karbonunu %40 azaltan cephe stratejisiyle tasarlandı.",
+    mat: ["Alüminyum brise-soleil", "Düşük emilye cam", "Yeşil çatı", "Yerbeton"] },
+  { id: 3, title: "Taş Oda Galeri", cat: "Kültür", year: 2022, loc: "Çankaya, Ankara", area: "3.200 m²", client: "Arkeia Vakfı", status: "Teslim edildi", seed: "kesit-tasoda", aspect: "1/1",
+    desc: "Ankara'nın eski sanayi dokusunda, tuğla deposundan dönüştürülen çağdaş sanat galerisi. Mevcut taşıyıcı sistem restore edilerek içine bağımsız bir sergi hacmi yerleştirildi.",
+    mat: ["Eski tuğla", "Çelik makas", "Ham sıva", "Meşe döşeme"] },
+  { id: 4, title: "Sarıyer Villa 07", cat: "Konut", year: 2024, loc: "Sarıyer, İstanbul", area: "1.150 m²", client: "Özel", status: "Teslim edildi", seed: "kesit-villa07", aspect: "3/4",
+    desc: "Orman sınırındaki tek ailelik konut. Araziye değil, ağaçlara göre konumlanan villa; üç kot, iç avlu ve tek bir hareketle uzanan beton çatı ile tanımlanıyor.",
+    mat: ["Brüt beton", "Antrasit profil", "Doğal külçe taş", "Ceviz kaplama"] },
+  { id: 5, title: "Nexa Ticaret Merkezi", cat: "Ticari", year: 2021, loc: "Alsancak, İzmir", area: "24.000 m²", client: "Vanta Gıda A.Ş.", status: "Teslim edildi", seed: "kesit-nexa", aspect: "1/1",
+    desc: "Alsancak'ta kentli geçişleri içine alan perakende kompleksi. Çatı katmanı, mahalle ölçeğinde sokaklar ve 600 kişilik etkinlik alanıyla yeniden kurgulandı.",
+    mat: ["Perfore metal cephe", "Beton doku", "Cam fibre", "Ahşap sundurma"] },
+  { id: 6, title: "Arkeia Kültür Merkezi", cat: "Kültür", year: 2023, loc: "Konyaaltı, Antalya", area: "9.800 m²", client: "Akfen Turizm", status: "Teslim edildi", seed: "kesit-arkeia", aspect: "4/5",
+    desc: "2. yüzyıl antik kent kalıntılarının üzerine 'yüzen' bir müze ve 900 kişilik performans salonu. Kazı alanına tek bir temel değmiyor; yapı çelik makaslar üzerinde taşıyor.",
+    mat: ["Çelik iskelet", "Kireç bazlı sıva", "Traverten", "Kromaj cam"] },
+  { id: 7, title: "Ortaköy Loft 12", cat: "Konut", year: 2022, loc: "Beşiktaş, İstanbul", area: "640 m²", client: "Özel", status: "Teslim edildi", seed: "kesit-loft12", aspect: "4/3",
+    desc: "1908 tarihli han katında tek katlı yaşam alanı. Tarihi tuğla duvarlar, çelik iskelet ve içine yerleşen cam kutu ile üç farklı yaşam senaryosuna izin veriyor.",
+    mat: ["Tarihi tuğla", "Siyah çelik", "Mermer blok", "Keten perde"] },
+];
+
+const SERVICES: Service[] = [
+  { title: "Mimari Tasarım",
+    desc: "Konsept eskizlerinden uygulama detaylarına kadar yapının tüm tasarım katmanını üstleniyoruz. Ruhu olan, yönetmeliğe ve bütçeye oturan, yıllara meydan okuyan projeler üretiyoruz.",
+    items: ["Kentsel analiz & fizibilite", "Konsept & taslak proje", "Uygulama ve detay çizimleri", "3B görselleştirme & maket"] },
+  { title: "Anahtar Teslim İnşaat",
+    desc: "Tasarım ile şantiyeyi aynı masada buluştururuz. Tek yüklenici, tek muhatap, tek takvim: keşiften teslime tüm süreç bizim sorumluluğumuzda.",
+    items: ["Statik & zemin etüdü koordinasyonu", "Şantiye organizasyonu & güvenlik", "Malzeme kalite kontrolü", "Sabit bedel & takvim garantisi"] },
+  { title: "İç Mimarlık",
+    desc: "Mekânı içeriden kurgularız: ışığı, malzemeyi ve ölçeği insanın tenine göre seçer, özel üretim detaylarla tamamlarız.",
+    items: ["Mekân kurgusu & planlama", "Özel mobilya tasarımı", "Malzeme & aydınlatma seçkisi", "Uygulama denetimi"] },
+  { title: "Kentsel Dönüşüm & Restorasyon",
+    desc: "Yıkılacak olanı değil, yaşayacak olanı tasarlıyoruz. Riskli yapıları güvenle yeniler, tarihi dokuları hak ettiği titizlikle onarırız.",
+    items: ["Riskli yapı tespiti & yenileme", "Mevcut yapı belgeleme", "Restorasyon & cephe iyileştirme", "Ruhsat & lisans süreç yönetimi"] },
+  { title: "Proje Yönetimi",
+    desc: "Sizin adınıza takvimi, bütçeyi ve kaliteyi yönetiriz. Şeffaf raporlama ile her aşamada ne olduğunu tam olarak bilirsiniz.",
+    items: ["Bütçe & zaman planlama", "Yüklenici & tedarikçi seçimi", "Kalite & iş güvenliği denetimi", "Haftalık ilerleme raporları"] },
+];
+
+const PROCESS = [
+  { title: "Keşif & Analiz", desc: "Araziyi yürüyerek, yönetmeliği satır satır okuyarak başlarız. Belediye kısıtları, güneş, rüzgâr ve komşu dokusu; bütçenizle birlikte projenin gerçek sınırlarını çizer." },
+  { title: "Konsept Tasarım", desc: "Sınırlar içinde en güçlü fikri ararız. İki-üç alternatif konsept, malzeme kurulları ve bütçe korelasyonu ile birlikte sunulur; karar sizin, netleştirme bizim." },
+  { title: "Teknik Proje", desc: "Statik, mekanik ve elektrik disiplinleri tasarımı masaya oturtur. Detay çizimleri, keşif özetleri ve şantiye şartnamesi ile iş teslim edilebilir hâle gelir." },
+  { title: "Uygulama & Şantiye", desc: "Kendi şantiye ekibimizle, haftalık rapor ve sabit takvimle üretiriz. Tasarım çizgisinden sapma olmadan, malzeme kalitesi baştan yazılı olarak garanti edilir." },
+  { title: "Teslim & Sonrası", desc: "İşletme dosyası, garanti belgeleri ve iki yıl ücretsiz yapı denetimi ile teslim. Bina teslim gününde değil, on yıl sonra da bizimle iletişimde kalır." },
+];
+
+const CLIENTS = ["ETA Holding", "Mera Gayrimenkul", "Turbon Enerji", "Akfen Turizm", "Kule Lojistik", "Vanta Gıda"];
+
+const WA_LINK = "https://wa.me/905324189503?text=" + encodeURIComponent("Merhaba, bir projem için Kesit Mimarlık ile görüşmek istiyorum.");
+
+/* ============================================================
+   YARDIMCILAR
+============================================================ */
+const scrollToId = (id: string) =>
+  window.dispatchEvent(new CustomEvent("app:scrollto", { detail: id }));
+
+const goQuote = () => {
+  scrollToId("iletisim");
+  setTimeout(() => document.getElementById("lead-name")?.focus({ preventScroll: true }), 1500);
+};
+
+const cardSrc = (p: Project) => {
+  const [a, b] = p.aspect.split("/").map(Number);
+  return img(p.seed, 1000, Math.round((1000 * b) / a));
+};
+
+// Kayan satır başlığı (clip reveal)
+function MaskLine({ children, delay = 0, ready = true }: { children: React.ReactNode; delay?: number; ready?: boolean }) {
+  return (
+    <span className="block overflow-hidden pb-[0.08em] -mb-[0.08em]">
+      <motion.span
+        className="block"
+        initial={{ y: "115%" }}
+        animate={ready ? { y: "0%" } : { y: "115%" }}
+        transition={{ duration: 1.1, delay, ease: easeExpo }}
+      >{children}</motion.span>
+    </span>
+  );
+}
+
+// Scroll'a giren maske başlığı
+function MaskInView({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+  return (
+    <span className={"block overflow-hidden " + className}>
+      <motion.span
+        className="block"
+        initial={{ y: "115%" }}
+        whileInView={{ y: "0%" }}
+        viewport={{ once: true, margin: "-10% 0px" }}
+        transition={{ duration: 1, delay, ease: easeExpo }}
+      >{children}</motion.span>
+    </span>
+  );
+}
+
+// Genel reveal sarmalayıcı
+function Reveal({ children, delay = 0, y = 32, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-8% 0px" }}
+      transition={{ duration: 0.9, delay, ease: easeExpo }}
+    >{children}</motion.div>
+  );
+}
+
+// Section başlığı: mono etiket + dev maske başlık
+function SectionHead({ no, tag, title, dark = false, right }: { no: string; tag: string; title: string; dark?: boolean; right?: React.ReactNode }) {
+  const c = dark ? "text-paper" : "text-ink";
+  const s = dark ? "text-paper/50" : "text-stone";
+  return (
+    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14 md:mb-20">
+      <div>
+        <div className={`mono text-[10px] tracking-[.4em] uppercase ${s} mb-5 flex items-center gap-3`}>
+          <span className="w-9 h-px bg-clay inline-block" />( {no} ) — {tag}
+        </div>
+        <h2 className={`font-x font-black uppercase leading-[0.92] tracking-tight text-[clamp(2.6rem,6.5vw,6rem)] ${c}`}>
+          <MaskInView>{title}</MaskInView>
+        </h2>
+      </div>
+      {right && <div className="md:pb-2">{right}</div>}
+    </div>
+  );
+}
+
+// Mimari plan köşe işareti (+)
+function Cross({ className = "" }: { className?: string }) {
+  return (
+    <span className={`absolute w-4 h-4 pointer-events-none text-ink ${className}`}>
+      <span className="absolute left-1/2 top-0 bottom-0 w-px bg-current opacity-30 -translate-x-1/2" />
+      <span className="absolute top-1/2 left-0 right-0 h-px bg-current opacity-30 -translate-y-1/2" />
+    </span>
+  );
+}
+
+// Manyetik buton sarmalayıcı
+function Magnetic({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const x = useSpring(useMotionValue(0), { stiffness: 220, damping: 16 });
+  const y = useSpring(useMotionValue(0), { stiffness: 220, damping: 16 });
+  return (
+    <motion.div
+      ref={ref}
+      style={{ x, y }}
+      className="inline-block"
+      onMouseMove={(e: React.MouseEvent) => {
+        const r = ref.current?.getBoundingClientRect();
+        if (!r) return;
+        x.set((e.clientX - (r.left + r.width / 2)) * 0.28);
+        y.set((e.clientY - (r.top + r.height / 2)) * 0.28);
+      }}
+      onMouseLeave={() => { x.set(0); y.set(0); }}
+    >{children}</motion.div>
+  );
+}
+
+// Animasyonlu sayaç
+function Stat({ value, suffix, label, delay = 0 }: { value: number; suffix: string; label: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
+  const mv = useMotionValue(0);
+  const txt = useTransform(mv, (v: number) => Math.round(v).toLocaleString("tr-TR"));
+  useEffect(() => {
+    if (inView) {
+      const c = animate(mv, value, { duration: 2, delay, ease: easeExpo });
+      return () => c.stop();
+    }
+  }, [inView]);
+  return (
+    <div ref={ref} className="border-t border-line pt-4">
+      <div className="font-x font-black text-4xl md:text-[3.4rem] leading-none">
+        <motion.span>{txt}</motion.span><span className="text-clay">{suffix}</span>
+      </div>
+      <p className="mono text-[10px] tracking-[.25em] text-stone mt-3 uppercase">{label}</p>
+    </div>
+  );
+}
+
+/* ============================================================
+   ÖZEL İMLEÇ
+============================================================ */
+function Cursor() {
+  const [enabled, setEnabled] = useState(false);
+  const [active, setActive] = useState(false);
+  const [label, setLabel] = useState("");
+  const x = useMotionValue(-100), y = useMotionValue(-100);
+  const sx = useSpring(x, { stiffness: 650, damping: 45, mass: 0.5 });
+  const sy = useSpring(y, { stiffness: 650, damping: 45, mass: 0.5 });
+
+  useEffect(() => {
+    if (!window.matchMedia("(pointer:fine) and (min-width:1024px)").matches) return;
+    setEnabled(true);
+    document.body.classList.add("has-cursor");
+    const move = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY); };
+    const over = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement).closest?.("[data-cursor]") as HTMLElement | null;
+      if (el) { setActive(true); setLabel(el.dataset.cursor || ""); }
+      else { setActive(false); setLabel(""); }
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseover", over);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseover", over);
+      document.body.classList.remove("has-cursor");
+    };
+  }, []);
+
+  if (!enabled) return null;
+  return (
+    <React.Fragment>
+      <motion.div style={{ x: sx, y: sy }} className="fixed top-0 left-0 z-[260] pointer-events-none">
+        <motion.div
+          animate={{ scale: active ? 0 : 1 }}
+          className="w-2.5 h-2.5 -ml-[5px] -mt-[5px] rounded-full bg-paper mix-blend-difference"
+        />
+      </motion.div>
+      <motion.div style={{ x: sx, y: sy }} className="fixed top-0 left-0 z-[259] pointer-events-none">
+        <motion.div
+          animate={{ scale: active ? 1 : 0, opacity: active ? 1 : 0 }}
+          transition={{ duration: 0.35, ease: easeExpo }}
+          className="w-20 h-20 -ml-10 -mt-10 rounded-full bg-clay text-ink flex items-center justify-center mono text-[10px] tracking-[.3em]"
+        >{label}</motion.div>
+      </motion.div>
+    </React.Fragment>
+  );
+}
+
+/* ============================================================
+   PRELOADER
+============================================================ */
+function Preloader({ onReady, onGone }: { onReady: () => void; onGone: () => void }) {
+  const [n, setN] = useState(0);
+  const [out, setOut] = useState(false);
+  useEffect(() => {
+    const c = animate(0, 100, {
+      duration: 1.2,
+      ease: [0.65, 0, 0.35, 1],
+      onUpdate: (v: number) => setN(Math.round(v)),
+      onComplete: () => {
+        setOut(true);
+        onReady();
+        setTimeout(onGone, 850);
+      },
+    });
+    return () => c.stop();
+  }, []);
+  return (
+    <motion.div
+      className="fixed inset-0 z-[300] bg-ink text-paper flex flex-col justify-between p-6 md:p-10"
+      animate={out ? { y: "-100%" } : { y: 0 }}
+      transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+    >
+      <div className="mono text-[10px] tracking-[.4em] uppercase flex justify-between text-paper/70">
+        <span>Kesit Mimarlık & İnşaat</span>
+        <span className="hidden sm:block">Est. 1998 — İstanbul</span>
+      </div>
+      <div className="flex items-end justify-between">
+        <div className="font-x font-black leading-none text-[clamp(4rem,12vw,9rem)]">
+          {n}<span className="text-clay">%</span>
+        </div>
+        <div className="mono text-[10px] tracking-[.4em] text-paper/50 pb-3">YÜKLENİYOR</div>
+      </div>
+      <div className="h-px w-full bg-paper/15 overflow-hidden">
+        <div className="h-full bg-clay origin-left" style={{ transform: `scaleX(${n / 100})` }} />
+      </div>
+    </motion.div>
+  );
+}
+
+/* ============================================================
+   HEADER + MOBİL MENÜ
+============================================================ */
+const NAV_LINKS: [string, string][] = [
+  ["Hakkımızda", "hakkimizda"],
+  ["Uzmanlık", "uzmanlik"],
+  ["Projeler", "projeler"],
+  ["Yaklaşım", "yaklasim"],
+  ["İletişim", "iletisim"],
+];
+
+function Header({ scrolled, menuOpen, setMenuOpen }: { scrolled: boolean; menuOpen: boolean; setMenuOpen: (v: boolean) => void }) {
+  return (
+    <header className={`fixed top-0 inset-x-0 z-[100] transition-all duration-500 ${
+      menuOpen ? "text-paper" : scrolled ? "bg-paper/85 backdrop-blur-md border-b border-line text-ink" : "text-ink"
+    }`}>
+      <div className="max-w-[1600px] mx-auto h-[72px] px-5 md:px-10 flex items-center justify-between">
+        <a
+          href="#top"
+          onClick={(e: React.MouseEvent) => { e.preventDefault(); scrollToId("top"); }}
+          className="font-x font-black text-xl tracking-tight select-none"
+        >KESİT<span className="text-clay">.</span></a>
+
+        <nav className="hidden lg:flex gap-9 mono text-[11px] tracking-[.28em] uppercase">
+          {NAV_LINKS.map(([label, id]) => (
+            <a key={id} href={`#${id}`} className="navlink"
+              onClick={(e: React.MouseEvent) => { e.preventDefault(); scrollToId(id); }}
+            >{label}</a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-4">
+          <a href="tel:+902123482670" className="hidden xl:flex items-center gap-2 mono text-[11px] tracking-[.18em] hover:text-clay transition-colors">
+            <Phone size={13} /> 0212 348 26 70
+          </a>
+          <Magnetic>
+            <button onClick={goQuote} className="btn btn-solid !py-2.5 !px-5 hidden sm:inline-flex">Teklif Al</button>
+          </Magnetic>
+          <button
+            className="lg:hidden p-2 -mr-2"
+            aria-label="Menü"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >{menuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MobileMenu({ open, setMenuOpen }: { open: boolean; setMenuOpen: (v: boolean) => void }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[90] bg-ink text-paper flex flex-col justify-between pt-28 pb-10 px-6"
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -24 }}
+          transition={{ duration: 0.5, ease: easeExpo }}
+        >
+          <nav className="flex flex-col">
+            {NAV_LINKS.map(([label, id], i) => (
+              <div key={id} className="overflow-hidden border-b border-paper/10">
+                <motion.a
+                  href={`#${id}`}
+                  className="flex items-baseline gap-5 py-4 font-x font-extrabold uppercase text-4xl tracking-tight"
+                  initial={{ y: "110%" }}
+                  animate={{ y: "0%" }}
+                  exit={{ y: "110%" }}
+                  transition={{ duration: 0.6, delay: 0.05 + i * 0.06, ease: easeExpo }}
+                  onClick={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    setMenuOpen(false);
+                    setTimeout(() => scrollToId(id), 120);
+                  }}
+                >
+                  <span className="mono text-xs text-clay">0{i + 1}</span>{label}
+                </motion.a>
+              </div>
+            ))}
+          </nav>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: 0.4 }}
+            className="flex flex-wrap gap-3"
+          >
+            <a href="tel:+902123482670" className="btn btn-ghost-light"><Phone size={14} /> Bizi Arayın</a>
+            <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn btn-ghost-light"><MessageCircle size={14} /> WhatsApp</a>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ============================================================
+   HERO — knockout tipografi + scale-in görsel
+============================================================ */
+function Hero({ ready }: { ready: boolean }) {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const imgY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const titleY = useTransform(scrollYProgress, [0, 1], [0, -70]);
+  const fade = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
+
+  const LINES = ["MEKÂNI", "MİMARIYLE", "İNŞA EDİYORUZ"];
+
+  const headline = (dark: boolean) => (
+    <h1 className={`font-x font-black uppercase leading-[0.92] tracking-[-0.015em] text-[clamp(3.2rem,8.4vw,9.5rem)] ${dark ? "text-ink" : "text-paper"}`}>
+      {LINES.map((l, i) => (
+        <MaskLine key={i} delay={0.15 + i * 0.1} ready={ready}>{l}</MaskLine>
+      ))}
+    </h1>
+  );
+
+  return (
+    <section ref={heroRef} id="top" className="relative min-h-[100svh] flex flex-col overflow-hidden">
+
+      {/* Masaüstü görsel paneli — clip reveal + scale-in + parallax */}
+      <div className="hidden lg:block absolute left-[55%] right-0 top-24 bottom-0 z-0 overflow-hidden">
+        <motion.div
+          className="w-full h-full"
+          initial={{ clipPath: "inset(0% 0% 100% 0%)" }}
+          animate={ready ? { clipPath: "inset(0% 0% 0% 0%)" } : { clipPath: "inset(0% 0% 100% 0%)" }}
+          transition={{ duration: 1.5, delay: 0.35, ease: easeExpo }}
+        >
+          <motion.img
+            src={img("kesit-hero", 1400, 1800)}
+            alt="Modern mimari yapı — Kesit"
+            className="w-full h-full object-cover saturate-[.85] contrast-[1.05]"
+            style={{ y: imgY }}
+            initial={{ scale: 1.3 }}
+            animate={ready ? { scale: 1.15 } : { scale: 1.3 }}
+            transition={{ duration: 2.2, delay: 0.35, ease: easeExpo }}
+          />
+        </motion.div>
+        <div className="absolute top-6 -left-3 bg-ink/70 text-paper mono text-[10px] tracking-[.3em] uppercase px-2 py-3" style={{ writingMode: "vertical-rl" }}>
+          Villa 07 — Sarıyer / 2024
+        </div>
+      </div>
+
+      {/* Sol cetvel — mimari çizim hissi */}
+      <div className="hidden xl:block absolute left-5 top-0 bottom-0 w-px bg-line z-[5]">
+        {Array.from({ length: 19 }).map((_, i) => (
+          <span key={i} className="absolute left-0 w-2 h-px bg-line" style={{ top: `${(i + 1) * 5}%` }} />
+        ))}
+      </div>
+      <Cross className="hidden xl:block left-[13px] top-28" />
+
+      {/* Başlık bloğu + knockout katmanı */}
+      <motion.div className="relative z-10 w-full" style={{ y: titleY, opacity: fade }}>
+        <div className="px-5 md:px-10 lg:pl-14 lg:pr-0 pt-28 lg:pt-36">
+          <div className="mono text-[10px] tracking-[.4em] uppercase text-stone mb-8 flex items-center gap-3">
+            <span className="w-10 h-px bg-clay inline-block" />Kesit Mimarlık & İnşaat — Est. 1998
+          </div>
+          {headline(true)}
+
+          <div className="mt-10 flex flex-col md:flex-row md:items-end gap-8 md:gap-14">
+            <p className="max-w-md text-stone leading-relaxed">
+              İstanbul merkezli mimarlık ve inşaat şirketi. Konut, ticari ve kültürel yapılarda
+              konsept tasarımdan anahtar teslime kadar tüm süreci tek çatı altında yürütüyoruz.
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Magnetic>
+                <button onClick={goQuote} className="btn btn-solid">Teklif Al <ArrowRight size={15} /></button>
+              </Magnetic>
+              <button onClick={() => scrollToId("projeler")} className="btn btn-ghost">Projeler <ArrowUpRight size={15} /></button>
+            </div>
+          </div>
+        </div>
+
+        {/* Görselle örtüşen kısım kırık beyaza döner (knockout) */}
+        <div aria-hidden className="hidden lg:block absolute inset-0 pointer-events-none" style={{ clipPath: "inset(0 0 0 55%)" }}>
+          <div className="px-5 md:px-10 lg:pl-14 lg:pr-0 pt-28 lg:pt-36">
+            <div className="mono text-[10px] tracking-[.4em] uppercase text-paper mb-8 flex items-center gap-3 opacity-80">
+              <span className="w-10 h-px bg-clay inline-block" />Kesit Mimarlık & İnşaat — Est. 1998
+            </div>
+            {headline(false)}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Mobil görsel */}
+      <div className="lg:hidden px-5 md:px-10 mt-12">
+        <div className="h-[44vh] overflow-hidden">
+          <motion.img
+            src={img("kesit-hero", 1200, 900)}
+            alt="Modern mimari yapı — Kesit"
+            className="w-full h-full object-cover saturate-[.85]"
+            initial={{ scale: 1.25, opacity: 0 }}
+            animate={ready ? { scale: 1.05, opacity: 1 } : {}}
+            transition={{ duration: 1.8, delay: 0.4, ease: easeExpo }}
+          />
+        </div>
+      </div>
+
+      {/* Alt bilgi şeridi */}
+      <div className="relative z-20 mt-auto pt-16">
+        <div className="border-t border-line bg-paper">
+          <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14 h-16 grid grid-cols-2 md:grid-cols-4 items-center mono text-[10px] tracking-[.28em] uppercase text-stone">
+            <span className="flex items-center gap-2">
+              Scroll
+              <motion.span animate={{ y: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}>
+                <ArrowDown size={12} />
+              </motion.span>
+            </span>
+            <span className="hidden md:block">41.0082°K — 28.9784°D</span>
+            <span className="hidden md:block">Konut / Ticari / Kültür</span>
+            <span className="text-right">Mimarlık — İnşaat — Teslim</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   MARQUEE
+============================================================ */
+function Marquee() {
+  const items = ["Anahtar Teslim İnşaat", "Mimari Tasarım", "İç Mimarlık", "Kentsel Dönüşüm", "Restorasyon", "Proje Yönetimi"];
+  const Row = ({ hidden }: { hidden?: boolean }) => (
+    <div aria-hidden={hidden} className="flex items-center shrink-0">
+      {items.map((t, i) => (
+        <span key={i} className="flex items-center gap-8 pr-8 font-x font-extrabold uppercase text-2xl md:text-4xl whitespace-nowrap">
+          {t}<Asterisk size={26} className="text-clay shrink-0" />
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <div className="bg-ink text-paper py-7 overflow-hidden border-y border-ink">
+      <motion.div
+        className="flex"
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ duration: 30, ease: "linear", repeat: Infinity }}
+      >
+        <Row /><Row hidden />
+      </motion.div>
+    </div>
+  );
+}
+
+/* ============================================================
+   HAKKIMIZDA — kelime kelime manifesto + sayaçlar
+============================================================ */
+const MANIFEST = "1998'den bu yana İstanbul'da konut, ticari ve kültürel yapılar tasarlıyor, projelendiriyor ve inşa ediyoruz. Bizim için mimarlık salt estetik bir tercih değil; malzeme, ışık ve insan arasında kurulan dürüst bir ilişkidir. Bir yapı yıllarca ayakta kalır — o yüzden her çizgiyi, her kalıbı, her teslimi bir kereye mahsus yapılacakmış gibi ele alıyoruz.";
+
+function ManifestWord({ progress, range, children }: { progress: any; range: [number, number]; children: string }) {
+  const opacity = useTransform(progress, range, [0.14, 1]);
+  return <motion.span style={{ opacity }} className="inline-block mr-[0.28em]">{children}</motion.span>;
+}
+
+function About() {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.85", "end 0.45"] });
+  const words = MANIFEST.split(" ");
+
+  return (
+    <section id="hakkimizda" className="py-24 md:py-36">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14 grid grid-cols-12 gap-x-8 gap-y-14">
+        {/* Sol — sticky */}
+        <div className="col-span-12 lg:col-span-4 lg:sticky lg:top-28 self-start">
+          <div className="mono text-[10px] tracking-[.4em] uppercase text-stone mb-6 flex items-center gap-3">
+            <span className="w-9 h-px bg-clay inline-block" />( 01 ) — Hakkımızda
+          </div>
+          <Reveal>
+            <div className="overflow-hidden max-w-[300px]">
+              <img
+                src={img("kesit-studio", 600, 760)}
+                alt="Kesit stüdyo"
+                loading="lazy"
+                className="w-full object-cover grayscale-[.9] hover:grayscale-0 transition duration-700"
+              />
+            </div>
+            <p className="mono text-[11px] leading-relaxed text-stone mt-5 max-w-[300px] uppercase tracking-[.14em]">
+              Y. Mimar Deniz Keseroğlu<br />Kurucu Ortak — Levent Atölyesi
+            </p>
+          </Reveal>
+        </div>
+
+        {/* Sağ — manifesto + istatistik */}
+        <div className="col-span-12 lg:col-span-8">
+          <p ref={ref} className="font-semibold text-[1.45rem] md:text-[2.1rem] leading-[1.4] max-w-4xl tracking-tight">
+            {words.map((w, i) => (
+              <ManifestWord key={i} progress={scrollYProgress} range={[i / words.length, (i + 1) / words.length]}>{w}</ManifestWord>
+            ))}
+          </p>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 mt-16 md:mt-24">
+            <Stat value={26} suffix="" label="Yıllık Deneyim" />
+            <Stat value={148} suffix="+" label="Tamamlanan Proje" delay={0.1} />
+            <Stat value={520000} suffix="" label="m² İnşa Alanı" delay={0.2} />
+            <Stat value={34} suffix="" label="Ulusal Ödül" delay={0.3} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   UZMANLIK — akordeon satırlar (koyu section)
+============================================================ */
+function Services() {
+  const [open, setOpen] = useState(0);
+  return (
+    <section id="uzmanlik" className="bg-ink text-paper py-24 md:py-36 relative">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14">
+        <SectionHead
+          no="02" tag="Uzmanlık" title="NE YAPIYORUZ" dark
+          right={<p className="text-paper/50 max-w-sm text-sm leading-relaxed">Beş ana disiplin, tek takvim ve tek muhatap. Satırlara tıklayarak her uzmanlığın kapsamını görebilirsiniz.</p>}
+        />
+        <div className="border-b border-paper/15">
+          {SERVICES.map((s, i) => {
+            const isOpen = open === i;
+            return (
+              <div key={i} className="group">
+                <button onClick={() => setOpen(isOpen ? -1 : i)} className="w-full text-left">
+                  <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-5 md:gap-8 py-6 md:py-8 border-t border-paper/15 hover:bg-paper/[.04] transition-colors px-1 md:px-3">
+                    <span className={`mono text-sm md:text-base transition-colors duration-300 ${isOpen ? "text-clay" : "text-paper/40"}`}>
+                      0{i + 1}
+                    </span>
+                    <span className={`font-x font-extrabold uppercase tracking-tight text-[1.55rem] md:text-[2.6rem] leading-none transition-transform duration-500 ${isOpen ? "translate-x-2 md:translate-x-4" : "group-hover:translate-x-2 md:group-hover:translate-x-4"}`}>
+                      {s.title}
+                    </span>
+                    <span className="text-paper/60 group-hover:text-clay transition-colors">
+                      {isOpen ? <Minus size={22} /> : <Plus size={22} />}
+                    </span>
+                  </div>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.55, ease: easeExpo }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid md:grid-cols-5 gap-8 md:gap-12 pb-10 md:pb-12 md:pl-[4.5rem] px-1 md:px-3">
+                        <p className="md:col-span-3 text-paper/60 leading-relaxed max-w-xl">{s.desc}</p>
+                        <ul className="md:col-span-2">
+                          {s.items.map((it, j) => (
+                            <li key={j} className="flex items-center gap-3 text-sm border-b border-paper/10 py-3 text-paper/80">
+                              <ArrowRight size={13} className="text-clay shrink-0" />{it}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   PROJELER — editorial grid + filtre + detay paneli
+============================================================ */
+function ProjectCard({ p, idx, onOpen }: { p: Project; idx: number; onOpen: (p: Project) => void }) {
+  return (
+    <Reveal delay={(idx % 3) * 0.08}>
+      <article
+        data-cursor="İNCELE"
+        onClick={() => onOpen(p)}
+        className="group"
+      >
+        <div className="overflow-hidden relative">
+          <img
+            src={cardSrc(p)}
+            alt={p.title}
+            loading="lazy"
+            style={{ aspectRatio: p.aspect }}
+            className="w-full object-cover grayscale-[.85] group-hover:grayscale-0 group-hover:scale-[1.04] transition-all duration-700 ease-out"
+          />
+          <span className="absolute top-3 left-3 bg-paper/90 text-ink mono text-[10px] tracking-[.25em] uppercase px-2.5 py-1.5">
+            {p.cat}
+          </span>
+        </div>
+        <div className="mt-4 border-t border-line pt-3 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-x font-extrabold uppercase text-xl md:text-2xl tracking-tight group-hover:text-clay transition-colors duration-300">
+              {p.title}
+            </h3>
+            <p className="mono text-[11px] tracking-[.18em] uppercase text-stone mt-1.5">{p.loc} — {p.year}</p>
+          </div>
+          <ArrowUpRight size={20} className="mt-1 shrink-0 transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-clay" />
+        </div>
+      </article>
+    </Reveal>
+  );
+}
+
+function Projects({ onOpen }: { onOpen: (p: Project) => void }) {
+  const FILTERS: ("Tümü" | Category)[] = ["Tümü", "Konut", "Ticari", "Kültür"];
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Tümü");
+  const filtered = filter === "Tümü" ? PROJECTS : PROJECTS.filter((p) => p.cat === filter);
+  const left = filtered.filter((_, i) => i % 2 === 0);
+  const right = filtered.filter((_, i) => i % 2 === 1);
+
+  return (
+    <section id="projeler" className="py-24 md:py-36">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14">
+        <SectionHead
+          no="03" tag="Seçili İşler" title="İŞLERİMİZ"
+          right={
+            <div className="flex flex-wrap gap-x-7 gap-y-3 mono text-[11px] tracking-[.25em] uppercase">
+              {FILTERS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`pb-1 border-b transition-colors ${filter === f ? "text-clay border-clay" : "text-stone border-transparent hover:text-ink"}`}
+                >{f}</button>
+              ))}
+            </div>
+          }
+        />
+
+        <div key={filter} className="flex flex-col lg:flex-row gap-12 lg:gap-8">
+          <div className="lg:w-[58%] space-y-14 md:space-y-20">
+            {left.map((p, i) => <ProjectCard key={p.id} p={p} idx={i} onOpen={onOpen} />)}
+          </div>
+          <div className="lg:w-[42%] space-y-14 md:space-y-20 lg:pt-40">
+            {right.map((p, i) => <ProjectCard key={p.id} p={p} idx={i} onOpen={onOpen} />)}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProjectDrawer({ project, onClose, onPick }: { project: Project | null; onClose: () => void; onPick: (id: number) => void }) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, []);
+
+  const idx = project ? PROJECTS.findIndex((p) => p.id === project.id) : 0;
+  const prev = PROJECTS[(idx - 1 + PROJECTS.length) % PROJECTS.length];
+  const next = PROJECTS[(idx + 1) % PROJECTS.length];
+
+  return (
+    <AnimatePresence>
+      {project && (
+        <div className="fixed inset-0 z-[120]">
+          <motion.div
+            className="absolute inset-0 bg-ink/70 backdrop-blur-sm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          <motion.aside
+            className="absolute right-0 top-0 h-full w-full max-w-[640px] bg-ink text-paper overflow-y-auto overscroll-contain"
+            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+            transition={{ duration: 0.6, ease: easeExpo }}
+          >
+            <div className="p-6 md:p-10">
+              <div className="flex items-center justify-between mb-8">
+                <span className="mono text-[10px] tracking-[.35em] uppercase text-paper/50">
+                  Proje — {String(idx + 1).padStart(2, "0")}/{String(PROJECTS.length).padStart(2, "0")}
+                </span>
+                <button onClick={onClose} className="p-2 -mr-2 hover:text-clay transition-colors" aria-label="Kapat">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <motion.div key={project.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: easeExpo }}>
+                <div className="overflow-hidden">
+                  <img src={img(project.seed + "-hero", 1600, 1000)} alt={project.title} className="w-full aspect-[16/10] object-cover saturate-[.9]" />
+                </div>
+
+                <div className="mono text-[10px] tracking-[.3em] uppercase text-clay mt-8">{project.cat} — {project.year}</div>
+                <h3 className="font-x font-black uppercase text-4xl md:text-5xl tracking-tight mt-3">{project.title}</h3>
+
+                <div className="grid grid-cols-2 gap-x-8 mt-8">
+                  {[
+                    ["Konum", project.loc],
+                    ["İnşa Alanı", project.area],
+                    ["İşveren", project.client],
+                    ["Durum", project.status],
+                  ].map(([k, v]) => (
+                    <div key={k} className="border-t border-paper/15 py-3">
+                      <div className="mono text-[9px] tracking-[.3em] uppercase text-paper/40">{k}</div>
+                      <div className="text-sm mt-1">{v}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-paper/65 leading-relaxed mt-8">{project.desc}</p>
+
+                <div className="border-t border-paper/15 mt-8 pt-5">
+                  <div className="mono text-[9px] tracking-[.3em] uppercase text-paper/40 mb-2">Malzeme Paleti</div>
+                  <div className="mono text-[12px] tracking-[.12em] text-paper/80">{project.mat.join("  /  ")}</div>
+                </div>
+
+                <div className="overflow-hidden mt-10">
+                  <img src={img(project.seed + "-b", 1200, 800)} alt={project.title + " detay"} loading="lazy" className="w-full aspect-[3/2] object-cover saturate-[.9]" />
+                </div>
+
+                {/* Önceki / Sonraki */}
+                <div className="grid grid-cols-2 border-t border-paper/15 mt-10">
+                  <button onClick={() => onPick(prev.id)} className="flex items-center gap-3 py-6 border-r border-paper/15 mono text-[10px] tracking-[.25em] uppercase text-paper/60 hover:text-clay transition-colors">
+                    <ChevronLeft size={14} /> {prev.title}
+                  </button>
+                  <button onClick={() => onPick(next.id)} className="flex items-center justify-end gap-3 py-6 mono text-[10px] tracking-[.25em] uppercase text-paper/60 hover:text-clay transition-colors text-right">
+                    {next.title} <ArrowRight size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </motion.aside>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ============================================================
+   YAKLAŞIM — sticky başlık + adımlar
+============================================================ */
+function Step({ i, title, desc }: { i: number; title: string; desc: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-18% 0px" });
+  return (
+    <div ref={ref} className="grid grid-cols-[56px_1fr] md:grid-cols-[110px_1fr] gap-6 border-t border-line py-8 md:py-10">
+      <motion.span
+        initial={{ opacity: 0.12, y: 20 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.8, ease: easeExpo }}
+        className={`font-x font-black leading-none text-3xl md:text-5xl transition-colors duration-500 ${inView ? "text-clay" : "text-ink/15"}`}
+      >0{i + 1}</motion.span>
+      <motion.div initial={{ opacity: 0, y: 24 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.8, delay: 0.1, ease: easeExpo }}>
+        <h3 className="font-x font-extrabold uppercase text-lg md:text-2xl tracking-tight mb-3">{title}</h3>
+        <p className="text-stone leading-relaxed max-w-lg">{desc}</p>
+      </motion.div>
+    </div>
+  );
+}
+
+function Process() {
+  return (
+    <section id="yaklasim" className="py-24 md:py-36">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14 grid grid-cols-12 gap-x-8 gap-y-12">
+        <div className="col-span-12 lg:col-span-5 lg:sticky lg:top-28 self-start">
+          <div className="mono text-[10px] tracking-[.4em] uppercase text-stone mb-6 flex items-center gap-3">
+            <span className="w-9 h-px bg-clay inline-block" />( 04 ) — Yaklaşım
+          </div>
+          <h2 className="font-x font-black uppercase leading-[0.92] tracking-tight text-[clamp(2.6rem,6vw,5.5rem)]">
+            <MaskInView>NASIL</MaskInView>
+            <MaskInView delay={0.1}>ÇALIŞIYORUZ</MaskInView>
+          </h2>
+          <p className="text-stone leading-relaxed max-w-md mt-8">
+            İyi bir bina, iyi bir süreçten doğar. Beş adımlı süreç Weher aşamasında ne yapacağımızı ve
+            ne zaman teslim edeceğimizi baştan bilmemizi sağlar.
+          </p>
+          <button onClick={goQuote} className="btn btn-ghost mt-8">Süreci Başlatın <ArrowRight size={15} /></button>
+        </div>
+        <div className="col-span-12 lg:col-span-7 border-b border-line">
+          {PROCESS.map((s, i) => <Step key={i} i={i} title={s.title} desc={s.desc} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   GÜVEN — referanslar + alıntı
+============================================================ */
+function Trust() {
+  return (
+    <section className="pb-24 md:pb-32">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14">
+        <Reveal>
+          <div className="mono text-[10px] tracking-[.4em] uppercase text-stone mb-8 flex items-center gap-3">
+            <span className="w-9 h-px bg-clay inline-block" />Bizimle Çalışanlar
+          </div>
+        </Reveal>
+        <div className="flex flex-wrap items-baseline gap-x-10 gap-y-4">
+          {CLIENTS.map((c, i) => (
+            <Reveal key={c} delay={i * 0.05} y={16}>
+              <span className="font-x font-extrabold uppercase text-xl md:text-3xl tracking-tight text-ink/25 hover:text-ink transition-colors duration-500">
+                {c}
+              </span>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal delay={0.15}>
+          <blockquote className="border-t border-line mt-14 pt-10 max-w-4xl">
+            <p className="text-2xl md:text-[2.1rem] font-semibold leading-[1.35] tracking-tight">
+              “Limankule'nin sekiz aylık gecikme riskini, Kesit'in şantiye yönetimi sıfıra indirdi.
+              Tasarım dedikleri yerde duruyordu — temelde de, cephesinde de.”
+            </p>
+            <footer className="mono text-[11px] tracking-[.25em] uppercase text-stone mt-6">
+              Mert Öztuna — Mera Gayrimenkul, Genel Koordinatör
+            </footer>
+          </blockquote>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   İLETİŞİM — CTA üçlüsü + teklif formu (koyu section)
+============================================================ */
+function Field({ label, id, children }: { label: string; id: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={id} className="mono text-[9px] tracking-[.3em] uppercase text-paper/40 block mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls = "w-full bg-transparent border-b border-paper/20 focus:border-clay py-3 text-paper placeholder:text-paper/25 transition-colors duration-300";
+
+function Contact({ notify }: { notify: (msg: string) => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "", type: "Konut", area: "", msg: "" });
+  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [sent, setSent] = useState(false);
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm({ ...form, [k]: e.target.value });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: typeof errors = {};
+    if (form.name.trim().length < 3) errs.name = "Lütfen adınızı yazın.";
+    if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Geçerli bir telefon girin.";
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    try {
+      const prev = JSON.parse(localStorage.getItem("kesit-leads") || "[]");
+      localStorage.setItem("kesit-leads", JSON.stringify([...prev, { ...form, at: new Date().toISOString() }]));
+    } catch (_) { /* sessiz geç */ }
+    setSent(true);
+    notify("Talebiniz alındı — 24 saat içinde dönüş yapacağız.");
+  };
+
+  return (
+    <section id="iletisim" className="bg-ink text-paper py-24 md:py-36 relative">
+      <Cross className="right-10 top-10 text-paper" />
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14">
+        <div className="mono text-[10px] tracking-[.4em] uppercase text-paper/50 mb-8 flex items-center gap-3">
+          <span className="w-9 h-px bg-clay inline-block" />( 05 ) — İletişim
+        </div>
+        <h2 className="font-x font-black uppercase leading-[0.95] tracking-tight text-[clamp(2.4rem,6vw,5.5rem)]">
+          <MaskInView>BİR SONRAKİ PROJENİZİ</MaskInView>
+          <MaskInView delay={0.1}><span className="text-clay">BİRLİKTE İNŞA EDELİM</span></MaskInView>
+        </h2>
+
+        <div className="grid grid-cols-12 gap-x-8 gap-y-16 mt-16 md:mt-24">
+          {/* Sol — bilgiler + aksiyonlar */}
+          <div className="col-span-12 lg:col-span-5">
+            <p className="text-paper/55 leading-relaxed max-w-md mb-12">
+              Projenizin ilk 30 dakikalık ön değerlendirmesi ücretsizdir.
+              Formu doldurun ya da doğrudan ulaşın — mimarımız, şantiye şefimizle aynı masada oturarak
+              size döneriz.
+            </p>
+            {[
+              { icon: <MapPin size={15} />, k: "Stüdyo", v: "Nispetiye Cad. Levent İş Merkezi No:12, Kat 6 — İstanbul" },
+              { icon: <Phone size={15} />, k: "Telefon", v: "+90 212 348 26 70" },
+              { icon: <Mail size={15} />, k: "E-posta", v: "info@kesitmimarlik.com" },
+              { icon: <Clock size={15} />, k: "Mesai", v: "Pzt — Cum, 09:00 / 18:30" },
+            ].map((r) => (
+              <div key={r.k} className="flex gap-4 border-t border-paper/12 py-4 items-start">
+                <span className="text-clay mt-0.5">{r.icon}</span>
+                <div>
+                  <div className="mono text-[9px] tracking-[.3em] uppercase text-paper/40">{r.k}</div>
+                  <div className="text-sm mt-1">{r.v}</div>
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-4 mt-10">
+              <a href="tel:+902123482670" className="btn btn-ghost-light"><Phone size={14} /> Bizi Arayın</a>
+              <a href={WA_LINK} target="_blank" rel="noreferrer" className="btn btn-ghost-light"><MessageCircle size={14} /> WhatsApp'tan Ulaşın</a>
+            </div>
+          </div>
+
+          {/* Sağ — form */}
+          <div className="col-span-12 lg:col-span-7">
+            <AnimatePresence mode="wait">
+              {!sent ? (
+                <motion.form
+                  key="form"
+                  onSubmit={submit}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.5, ease: easeExpo }}
+                  className="border border-paper/15 p-6 md:p-10"
+                  noValidate
+                >
+                  <div className="mono text-[10px] tracking-[.35em] uppercase text-paper/50 mb-8">Teklif Talebi</div>
+                  <div className="grid md:grid-cols-2 gap-x-8 gap-y-7">
+                    <Field label="Ad Soyad *">
+                      <input id="lead-name" value={form.name} onChange={set("name")} placeholder="Adınız Soyadınız" className={inputCls} />
+                      {errors.name && <p className="mono text-[10px] text-clay mt-1.5 tracking-widest">{errors.name}</p>}
+                    </Field>
+                    <Field label="Telefon *">
+                      <input value={form.phone} onChange={set("phone")} placeholder="0 (5__) ___ __ __" className={inputCls} inputMode="tel" />
+                      {errors.phone && <p className="mono text-[10px] text-clay mt-1.5 tracking-widest">{errors.phone}</p>}
+                    </Field>
+                    <Field label="E-posta">
+                      <input value={form.email} onChange={set("email")} placeholder="ornek@sirket.com" className={inputCls} inputMode="email" />
+                    </Field>
+                    <Field label="Proje Türü">
+                      <div className="relative">
+                        <select value={form.type} onChange={set("type")} className={inputCls + " appearance-none pr-8"} style={{ colorScheme: "dark" }}>
+                          <option>Konut</option><option>Ticari</option><option>Kültür</option><option>Restorasyon</option><option>Diğer</option>
+                        </select>
+                        <ChevronDown size={15} className="absolute right-1 top-1/2 -translate-y-1/2 text-paper/40 pointer-events-none" />
+                      </div>
+                    </Field>
+                    <div className="md:col-span-2">
+                      <Field label="Tahmini İnşa Alanı (m²)">
+                        <input value={form.area} onChange={set("area")} placeholder="Örn. 1.200" className={inputCls} inputMode="numeric" />
+                      </Field>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Field label="Projenizi Kısaca Anlatın">
+                        <textarea value={form.msg} onChange={set("msg")} rows={4} placeholder="Arazi durumu, beklentileriniz, takvim..." className={inputCls + " resize-none"} />
+                      </Field>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mt-10">
+                    <p className="mono text-[9px] tracking-[.2em] uppercase text-paper/35 max-w-xs leading-relaxed">
+                      Bilgileriniz yalnızca teklif değerlendirmesi için kullanılır.
+                    </p>
+                    <Magnetic>
+                      <button type="submit" className="btn !bg-paper !text-ink hover:!bg-clay">Gönder <Send size={14} /></button>
+                    </Magnetic>
+                  </div>
+                </motion.form>
+              ) : (
+                <motion.div
+                  key="ok"
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: easeExpo }}
+                  className="border border-paper/15 p-10 md:p-14 flex flex-col items-start gap-6"
+                >
+                  <span className="w-14 h-14 rounded-full border border-clay flex items-center justify-center text-clay">
+                    <Check size={24} />
+                  </span>
+                  <h3 className="font-x font-extrabold uppercase text-3xl tracking-tight">Talebiniz alındı.</h3>
+                  <p className="text-paper/60 leading-relaxed max-w-md">
+                    Sayın {form.name.split(" ")[0]}, proje özetiniz ekibimize iletildi.
+                    24 saat içinde {form.phone} numarasından size ulaşacağız.
+                  </p>
+                  <button
+                    onClick={() => { setSent(false); setForm({ name: "", phone: "", email: "", type: "Konut", area: "", msg: "" }); }}
+                    className="btn btn-ghost-light"
+                  >Yeni Talep Oluştur</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   FOOTER
+============================================================ */
+function IstanbulClock() {
+  const [t, setT] = useState("");
+  useEffect(() => {
+    const f = () => setT(new Date().toLocaleTimeString("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+    f();
+    const id = setInterval(f, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="tabular-nums">{t}</span>;
+}
+
+function Footer() {
+  return (
+    <footer className="bg-ink text-paper border-t border-paper/15">
+      <div className="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14 pt-20 pb-8">
+        <div className="font-x font-black uppercase leading-none tracking-tight text-[clamp(4rem,17vw,15rem)] wordmark select-none">
+          KESİT<span className="text-clay" style={{ WebkitTextStroke: "0" }}>.</span>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-10 mt-16 pb-14 border-t border-paper/10 pt-10">
+          <div className="mono text-[11px] leading-loose text-paper/50 uppercase tracking-[.15em]">
+            © 2025 Kesit Mimarlık<br />& İnşaat A.Ş.<br />Tüm hakları saklıdır.
+          </div>
+          <div>
+            <div className="mono text-[9px] tracking-[.35em] uppercase text-clay mb-4">Menü</div>
+            <ul className="mono text-[11px] uppercase tracking-[.15em] space-y-2.5 text-paper/60">
+              {NAV_LINKS.map(([label, id]) => (
+                <li key={id}>
+                  <a href={`#${id}`} className="hover:text-paper transition-colors" onClick={(e: React.MouseEvent) => { e.preventDefault(); scrollToId(id); }}>
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="mono text-[9px] tracking-[.35em] uppercase text-clay mb-4">Uzmanlık</div>
+            <ul className="mono text-[11px] uppercase tracking-[.15em] space-y-2.5 text-paper/60">
+              {SERVICES.map((s) => <li key={s.title}>{s.title}</li>)}
+            </ul>
+          </div>
+          <div>
+            <div className="mono text-[9px] tracking-[.35em] uppercase text-clay mb-4">İletişim</div>
+            <ul className="mono text-[11px] uppercase tracking-[.15em] space-y-2.5 text-paper/60">
+              <li><a href="tel:+902123482670" className="hover:text-paper transition-colors">+90 212 348 26 70</a></li>
+              <li><a href="mailto:info@kesitmimarlik.com" className="hover:text-paper transition-colors">info@kesitmimarlik.com</a></li>
+              <li><a href={WA_LINK} target="_blank" rel="noreferrer" className="hover:text-paper transition-colors">WhatsApp Hattı</a></li>
+              <li className="pt-2 text-paper/40">İSTANBUL — <IstanbulClock /></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between gap-3 mono text-[9px] tracking-[.3em] uppercase text-paper/35">
+          <span>Levent, İstanbul — 41.0820°K, 28.9945°D</span>
+          <span>Est. 1998 — Bugüne</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ============================================================
+   TOAST
+============================================================ */
+function Toasts({ items }: { items: { id: number; msg: string }[] }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-[250] flex flex-col gap-3">
+      <AnimatePresence>
+        {items.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.45, ease: easeExpo }}
+            className="bg-ink text-paper border border-paper/15 px-5 py-4 flex items-center gap-3 shadow-2xl max-w-xs"
+          >
+            <span className="w-1.5 h-1.5 bg-clay shrink-0" />
+            <span className="text-sm leading-snug">{t.msg}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ============================================================
+   APP — Lenis, state ve kompozisyon
+============================================================ */
+function App() {
+  const [showPre, setShowPre] = useState(true);
+  const [ready, setReady] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
+  const lenisRef = useRef<any>(null);
+
+  const notify = (msg: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((t) => [...t, { id, msg }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200);
+  };
+
+  // Lenis yumuşak kaydırma + anchor navigasyonu
+  useEffect(() => {
+    let lenis: any = null;
+    try {
+      lenis = new Lenis({ duration: 1.15, smoothWheel: true });
+      const raf = (t: number) => { lenis?.raf(t); requestAnimationFrame(raf); };
+      requestAnimationFrame(raf);
+    } catch (_) { /* Lenis yoksa native kaydırma */ }
+    lenisRef.current = lenis;
+
+    const onScrollTo = (e: Event) => {
+      const id = (e as CustomEvent).detail as string;
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (lenis) lenis.scrollTo(el, { offset: -64, duration: 1.4 });
+      else el.scrollIntoView({ behavior: "smooth" });
+    };
+    window.addEventListener("app:scrollto", onScrollTo);
+    return () => {
+      window.removeEventListener("app:scrollto", onScrollTo);
+      lenis?.destroy();
+    };
+  }, []);
+
+  // Header scroll durumu
+  useEffect(() => {
+    const f = () => setScrolled(window.scrollY > 50);
+    f();
+    window.addEventListener("scroll", f, { passive: true });
+    return () => window.removeEventListener("scroll", f);
+  }, []);
+
+  // Menü / panel açıkken kaydırmayı kilitle
+  useEffect(() => {
+    const lock = menuOpen || !!activeProject;
+    document.body.style.overflow = lock ? "hidden" : "";
+    if (lock) lenisRef.current?.stop?.(); else lenisRef.current?.start?.();
+  }, [menuOpen, activeProject]);
+
+  return (
+    <React.Fragment>
+      {showPre && (
+        <Preloader onReady={() => setReady(true)} onGone={() => setShowPre(false)} />
+      )}
+      <Cursor />
+      <Header scrolled={scrolled} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <MobileMenu open={menuOpen} setMenuOpen={setMenuOpen} />
+      <main>
+        <Hero ready={ready} />
+        <Marquee />
+        <About />
+        <Services />
+        <Projects onOpen={setActiveProject} />
+        <Process />
+        <Trust />
+        <Contact notify={notify} />
+      </main>
+      <Footer />
+      <ProjectDrawer
+        project={activeProject}
+        onClose={() => setActiveProject(null)}
+        onPick={(id: number) => setActiveProject(PROJECTS.find((p) => p.id === id) || null)}
+      />
+      <Toasts items={toasts} />
+    </React.Fragment>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(<App />);
+</script>
+</body>
+</html>

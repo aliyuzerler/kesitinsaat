@@ -1,2 +1,3 @@
-# https://aliyuzerler.github.io/kesitinsaat
-kesit insaat&amp;mimarlık
+# kesitinsaat
+Ziyaret edebilirsiniz. 
+Url: https://aliyuzerler.github.io/kesitinsaat
